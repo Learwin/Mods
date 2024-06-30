@@ -1,0 +1,30 @@
+plugins {
+    id 'net.neoforged.moddev'
+}
+
+neoForge {
+    version = "${neo_forge_version}"
+
+    validateAccessTransformers = true
+
+    runs {
+
+        client {
+            client()
+        }
+
+        server {
+            server()
+        }
+        data {
+            data()
+        }
+
+
+        if (project.name != 'runenv') {
+            mods.create(project.name) {
+                sourceSet(project.sourceSets.main)
+            }
+        }
+    }
+}
