@@ -1,3 +1,126 @@
+import groovy.json.*
+
 plugins {
     id 'net.neoforged.moddev' version "${mdg_version}" apply false
+}
+
+gradle.afterProject { project ->
+    if (project != rootProject && project.name != 'zzzrunenv') {
+        project.tasks.getByName("processResources") {
+            outputs.upToDateWhen { false }
+            filesMatching('pack.mcmeta') {
+                processJsonFile([description: project.mod_name + " resources", pack_format: resource_pack_format,
+                                 "forge:resource_pack_format": resource_pack_format, "forge:data_pack_format": data_pack_format], getFile())
+            }
+            filesMatching('META-INF/neoforge.mods.toml') {
+                def lines = [
+                        'modLoader="javafml"',
+                        'loaderVersion="' + loader_version_range + '"',
+                        'issueTrackerURL="https://github.com/' + project.github_project + '/issues"',
+                        'license="' + mod_license + '"',
+                        '',
+                        '[[mods]]',
+                        '    modId="' + project.mod_id + '"',
+                        '    logoFile="' + project.mod_id + '.png"',
+                        '    version="' + project.mod_version + '"',
+                        '    displayName="' + project.mod_name + '"',
+//                        '    displayURL="' + project.mod_display_url + '"',
+                        '    authors="' + project.mod_authors + '"',
+                        "    description='''" + project.mod_description + "'''",
+                ]
+                lines.addAll([
+                        '',
+                        '[[dependencies.' + project.mod_id + ']]',
+                        '    modId="neoforge"',
+                        '    type="required"',
+                        '    versionRange="' + project.neo_forge_version_range + '"',
+                        '    ordering="NONE"',
+                        '    side="BOTH"',
+                        '',
+                        '[[dependencies.' + project.mod_id + ']]',
+                        '    modId="minecraft"',
+                        '    type="required"',
+                        '    versionRange="' + project.minecraft_version_range + '"',
+                        '    ordering="NONE"',
+                        '    side="BOTH"',
+                        '',
+                ]);
+                if (project.hasProperty("modDependencies")) {
+                    project.modDependencies.each {
+                        dependency -> {
+                            lines.add('[[dependencies.' + project.mod_id + ']]');
+                            dependency.each {
+                                entry -> {
+                                    if(entry.value instanceof Boolean || entry.value instanceof Number) {
+                                        lines.add('   ' + entry.key + '=' + entry.value)
+                                    } else {
+                                        lines.add('   ' + entry.key + '="' + entry.value + '"')
+                                    }
+                                }
+                            }
+                            lines.add('');
+                        }
+                    }
+                }
+                if (project.hasProperty("modMixins") && project.modMixins instanceof List && !project.modMixins.isEmpty()) {
+                    project.modMixins.each {
+                        config -> {
+                            lines.add('[[mixins]]');
+                            lines.add('   config="' + config + '"')
+                            lines.add('');
+                        }
+                    }
+                }
+
+                BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+                lines.each {
+                    line -> {
+                        writer.write(line)
+                        writer.newLine()
+                    }
+                }
+                writer.close();
+            }
+        }
+
+        project.jar {
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
+            archiveFileName.set(project.mod_name + "_NEOFORGE_v" + project.mod_version + "_mc" + project.minecraft_version + ".jar")
+            manifest {
+                attributes([
+                        "Specification-Title": project.mod_name,
+                        "Specification-Vendor": "CreativeMD",
+                        "Specification-Version": project.mod_version,
+                        "Implementation-Title": project.mod_name,
+                        "Implementation-Version"  : project.mod_version,
+                        "Implementation-Vendor": "CreativeMD",
+                        "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+                ])
+            }
+        }
+    }
+}
+
+void processJsonFile(properties, file) {
+    String fileContents = file.text.replaceAll(/\$\{[^}]*\}/, "0")
+    def input = new JsonSlurper().parseText(fileContents)
+    processJson(properties, input)
+    BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+    writer.write(JsonOutput.prettyPrint(JsonOutput.toJson(input)));
+    writer.close();
+}
+
+void processJson(properties, object) {
+    object.each {
+        entry -> {
+            if(entry.value instanceof Map) {
+                processJson(properties, entry.value)
+            } else if(properties.keySet().contains(entry.key)) {
+                entry.value = properties.get(entry.key)
+                if(entry.value.isNumber()) {
+                    entry.value = entry.value.toInteger()
+                }
+            }
+        }
+    }
 }
