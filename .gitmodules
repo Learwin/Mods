@@ -2,3 +2,7 @@
 	path = Turbine
 	url = https://github.com/Learwin/Turbine.git
 	branch = 1.21
+[submodule "OptimallyPacked"]
+	path = OptimallyPacked
+	url = https://github.com/Learwin/OptimallyPacked.git
+	branch = 1.21

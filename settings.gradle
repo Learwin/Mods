@@ -3,6 +3,7 @@ plugins {
 }
 
 include(':turbine')
+include(':optimallypacked')
 include(':zzzrunenv')
 
 
