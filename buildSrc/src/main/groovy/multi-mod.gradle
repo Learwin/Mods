@@ -27,13 +27,13 @@ neoForge {
                             break
                         case 'server':
                             server {
-                                client()
+                                server()
                                 ideName = fullTaskName
                             }
                             break
                         case 'data':
                             data {
-                                client()
+                                data()
                                 ideName = fullTaskName
                             }
                             break
